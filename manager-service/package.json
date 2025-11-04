@@ -1,0 +1,20 @@
+{
+  "name": "manager-service",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev:server": "nodemon src/server/server.js",
+    "dev:client": "cd src/client && npm run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build:client": "cd src/client && npm run build",
+    "start": "node src/server/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "nodemon": "^3.1.4"
+  }
+}
