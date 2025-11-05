@@ -13,22 +13,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// API endpoints
+// API
 app.use("/api/subastas", auctionsRoutes);
 app.use("/api/config", configRoutes);
 
-// === Servir el frontend construido (si existe) ===
-const clientDist = path.join(__dirname, "..", "client", "dist");
+// === Servir el frontend construido ===
+// Vite genera en manager-service/dist/client (por el outDir de vite.config.js)
+const clientDist = path.join(__dirname, "..", "..", "dist", "client");
 const indexHtml = path.join(clientDist, "index.html");
 
-// Solo configurar los archivos estáticos si ya existe el build
 if (fs.existsSync(indexHtml)) {
   app.use(express.static(clientDist));
-
-  // Usa expresión regular en lugar de "/*" o "*"
-  app.get(/.*/, (req, res) => {
-    res.sendFile(indexHtml);
-  });
+  // usa regex como catch-all para evitar errores con path-to-regexp
+  app.get(/.*/, (_req, res) => res.sendFile(indexHtml));
 }
 
 export default app;
