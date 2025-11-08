@@ -1,0 +1,44 @@
+:root{
+  --bg:#0f1115; --panel:#161a23; --text:#e8edf2; --muted:#a0a7b4; --border:#262b36;
+  --accent:#7c5cff; --success:#21c36a; --danger:#ff4d6d; --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box} html,body,#root{height:100%}
+body{margin:0;background:radial-gradient(1200px 800px at 20% -10%,#1b2030 0%,transparent 50%),
+radial-gradient(1200px 800px at 120% 10%,#171b26 0%,transparent 50%),var(--bg);color:var(--text);
+font-family:system-ui,-apple-system,Segoe UI,Roboto}
+
+.app{min-height:100dvh;display:grid;justify-items:center;align-content:start;padding:36px 20px}
+.container{width:min(100%,980px)}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent 60%),var(--panel);
+border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+
+.header h1{margin:0 0 6px;font-size:clamp(26px,4vw,42px)}
+.header p{margin:0 0 18px;color:var(--muted)}
+
+.grid{display:grid;grid-template-columns: 360px 1fr; gap:18px}
+@media (max-width: 860px){ .grid{grid-template-columns: 1fr} }
+
+.art{
+  display:grid; gap:12px;
+}
+.art img{
+  width:100%; border-radius:14px; border:1px solid var(--border); object-fit:cover;
+  max-height:420px; background:#0b0f16;
+}
+.meta{display:grid; gap:6px}
+.meta .title{font-weight:800;font-size:1.2rem}
+.meta .sub{color:var(--muted)}
+.price{font-weight:800;font-size:1.6rem}
+
+.controls{display:grid; gap:10px}
+.input, .btn{border-radius:12px; border:1px solid var(--border); background:#0e121a; color:var(--text)}
+.input{padding:10px 12px}
+.btn{padding:12px 14px; cursor:pointer}
+.btn-primary{background:linear-gradient(180deg,var(--accent),#5f38ff); border-color:transparent}
+.msg{font-weight:600}
+.msg.ok{color:var(--success)} .msg.err{color:var(--danger)}
+
+.badge{display:inline-block; padding:4px 8px; border:1px solid var(--border); border-radius:10px; color:var(--muted)}
+.row{display:flex; gap:10px; align-items:center}
+.bids{margin-top:10px; border-top:1px solid var(--border); padding-top:10px; color:var(--muted)}
+.bids .item{display:flex; justify-content:space-between; padding:6px 0}
