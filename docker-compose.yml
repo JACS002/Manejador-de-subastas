@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  manager-service:
+    build:
+      context: ./manager-service
+      dockerfile: Dockerfile
+    container_name: manager-service
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+
+  bidders-service:
+    build:
+      context: ./bidders-service
+      dockerfile: Dockerfile
+    container_name: bidders-service
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=production
+      - MANAGER_URL=http://manager-service:8080
+    depends_on:
+      - manager-service
+    restart: unless-stopped
