@@ -1,4 +1,4 @@
-# **Deber #3**
+# **Deber #4**
 
 Este README explica cómo levantar el sistema completo (manager + bidders) en **modo producción** usando Docker Compose.
 
@@ -38,3 +38,29 @@ Esto:
 ```bash
 docker-compose down
 ```
+
+#### Aportes de integrantes
+
+Joel Cuascota
+
+- Implementación del registro de postores en el servicio correspondiente.
+
+- Integración con el backend para almacenar los usuarios inscritos en cada subasta.
+
+- Actualización de la lista de postores registrada para cada subasta.
+
+Anahí Andrade
+
+- Desarrollo del frontend para mostrar la información detallada de cada subasta.
+
+- Renderizado dinámico de los datos configurados por el manejador.
+
+- Implementación de la interfaz que muestra los postores inscritos dentro de cada subasta.
+
+Ahmed Puco
+
+- Implementación del temporizador de cada subasta.
+
+- Lógica del conteo regresivo desde la configuración del manejador.
+
+- Integración del temporizador con el flujo completo de subastas.
