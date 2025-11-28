@@ -39,7 +39,7 @@ Esto:
 docker-compose down
 ```
 
-#### Aportes de integrantes
+## Aportes de integrantes
 
 Joel Cuascota
 
