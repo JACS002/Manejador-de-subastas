@@ -103,6 +103,7 @@ export default function App() {
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                     min={minNext}
+                    step={c.minIncrement}
                   />
                   <button className="btn btn-primary" onClick={bid}>Pujar</button>
                 </div>
