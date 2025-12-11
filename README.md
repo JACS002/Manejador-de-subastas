@@ -38,29 +38,106 @@ Esto:
 ```bash
 docker-compose down
 ```
+## 🧩 Aportes de Integrantes – Proyecto Final
+# Joel Cuascota – Servicio de Postores (Backend + WebSockets)
 
-## Aportes de integrantes
+- Implementación del registro de postores en tiempo real
 
-Joel Cuascota
+- Desarrollo de la función registerBidder(auctionId, bidder) en el backend del servicio de postores.
 
-- Implementación del registro de postores en el servicio correspondiente.
+- Gestión interna del estado registrations[auctionId] para mantener los usuarios registrados en cada subasta.
 
-- Integración con el backend para almacenar los usuarios inscritos en cada subasta.
+- Validación de nombres de postores, evitando duplicados y registros inválidos.
 
-- Actualización de la lista de postores registrada para cada subasta.
+- Integración con WebSockets para registro
 
-Anahí Andrade
+- Emisión automática del estado actualizado a todos los clientes mediante Socket.io cada vez que un usuario se registra.
 
-- Desarrollo del frontend para mostrar la información detallada de cada subasta.
+- Persistencia en memoria del estado de postores
 
-- Renderizado dinámico de los datos configurados por el manejador.
+- Diseño de la estructura interna que mantiene:
 
-- Implementación de la interfaz que muestra los postores inscritos dentro de cada subasta.
+* Postores registrados,
 
-Ahmed Puco
+* Precios actuales,
 
-- Implementación del temporizador de cada subasta.
+* Pujas realizadas,
 
-- Lógica del conteo regresivo desde la configuración del manejador.
+* Ganador de cada subasta.
 
-- Integración del temporizador con el flujo completo de subastas.
+- Control de acceso a subastas
+
+- Bloqueo de acceso a subastas que no están activas.
+
+- Lógica del backend para garantizar que solo los postores registrados puedan pujar.
+
+# Anahí Andrade – Frontend del Servicio de Postores (React + UI)
+
+- Desarrollo completo de la interfaz para cada subasta
+
+- Implementación de la vista /subasta/:id con:
+
+Imagen de la obra,
+
+Datos del autor, año, título,
+
+Precios base, iniciales y mínimos incrementos,
+
+Estado actual de la subasta.
+
+- Renderizado dinámico con datos enviados por el manejador
+
+- Integración con el estado emitido por WebSockets para mostrar:
+
+Temporizador,
+
+Precio actual,
+
+Estado (pending, active, finished),
+
+Ganador cuando corresponda.
+
+Interfaz de registro y lista de postores
+
+Inputs y botones para registrar postores.
+
+Visualización en tiempo real de la lista registrations.
+
+Mensajes de éxito y error estilizados.
+
+Vista principal del servicio de postores
+
+- Implementación de la pantalla / que lista todas las subastas en el orden definido por el manejador.
+
+# Ahmed Puco – Temporizadores y Flujo de Subastas Automáticas
+
+- Implementación del temporizador por subasta
+
+- Cálculo de startTs y endTs según la configuración enviada por el manejador.
+
+- Lógica secuencial automática:
+cada subasta inicia cuando termina la anterior.
+
+- Lógica del conteo regresivo
+
+- Cálculo en tiempo real de:
+
+secondsToStart,
+
+secondsToEnd,
+
+- Estado de cada subasta: pending, active, finished.
+
+- Integración del temporizador con WebSockets
+
+- Emisión del estado actualizado cada segundo.
+
+- Manejo automático del paso de una subasta a la siguiente.
+
+- Publicación del ganador inmediatamente al finalizar una subasta.
+
+- Coordinación global del flujo
+
+- Asegurar que todas las subastas comiencen automáticamente después de que el manejador guarda la configuración.
+
+- Garantizar la sincronización entre backend y frontend para el tiempo restante de cada lote.
