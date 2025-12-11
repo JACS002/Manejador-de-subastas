@@ -158,6 +158,28 @@ function AuctionView({ state, globalMsg, setGlobalMsg }) {
       </div>
     );
   }
+  if (auction.status !== "active") {
+  return (
+    <div className="panel">
+      <p>
+        Esta subasta no está activa actualmente. Estado actual:{" "}
+        <b>{auction.status}</b>
+      </p>
+
+      {auction.status === "pending" && (
+        <p>Comienza en {auction.secondsToStart} segundos.</p>
+      )}
+
+      {auction.status === "finished" && (
+        <p>La subasta ya ha finalizado.</p>
+      )}
+
+      <button className="btn" onClick={() => navigate("/")}>
+        Volver al listado
+      </button>
+    </div>
+  );
+}
 
   const isPending = auction.status === "pending";
   const isActive = auction.status === "active";
