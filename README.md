@@ -1,4 +1,4 @@
-# **Deber #4**
+# **Proyecto Final**
 
 Este README explica cómo levantar el sistema completo (manager + bidders) en **modo producción** usando Docker Compose.
 
