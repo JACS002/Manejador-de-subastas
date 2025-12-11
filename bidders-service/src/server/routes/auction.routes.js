@@ -1,36 +1,28 @@
+// src/server/routes/auction.routes.js
 import { Router } from "express";
 import { AuctionService } from "../services/auction.service.js";
 
 const router = Router();
 
-// Inicializa leyendo del manager
+// Inicializar el estado leyendo del manager (Deber 3/4/proyecto)
 router.post("/start", async (_req, res) => {
   try {
-    await AuctionService.loadFromManager();
+    await AuctionService.initFromManager();
     res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  } catch (err) {
+    console.error("Error en /api/start:", err);
+    res.status(500).json({ error: err.message || "Error al inicializar desde el manejador" });
   }
 });
 
-// Estado público (para polling del front)
+// Endpoint opcional para inspeccionar estado por REST
 router.get("/state", (_req, res) => {
   try {
     res.json(AuctionService.getPublicState());
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Hacer una puja
-router.post("/bid", (req, res) => {
-  try {
-    const { bidder, amount } = req.body || {};
-    AuctionService.placeBid({ bidder, amount: Number(amount) });
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message || "Error al obtener estado" });
   }
 });
 
 export default router;
+    

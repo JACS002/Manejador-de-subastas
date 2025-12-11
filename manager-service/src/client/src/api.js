@@ -20,3 +20,16 @@ export async function saveConfig(cfg) {
     throw new Error(err.error || "Error al guardar");
   }
 }
+const BIDDERS_URL =
+  import.meta.env.VITE_BIDDERS_URL || "http://localhost:8081";
+
+export async function notifyBiddersStart() {
+  const res = await fetch(`${BIDDERS_URL}/api/start`, {
+    method: "POST"
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "No se pudo inicializar el servicio de postores");
+  }
+  return res.json();
+}

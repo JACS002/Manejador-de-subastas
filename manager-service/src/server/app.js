@@ -16,6 +16,8 @@ app.use(express.json());
 // API
 app.use("/api/subastas", auctionsRoutes);
 app.use("/api/config", configRoutes);
+app.use("/api", auctionsRoutes);
+
 
 // === Servir el frontend construido ===
 // Vite genera en manager-service/dist/client (por el outDir de vite.config.js)

@@ -1,5 +1,6 @@
 import { useEffect, useState, useEffect as UseEffect } from "react";
-import { fetchAuctions, fetchConfig, saveConfig } from "./api";
+import { fetchAuctions, fetchConfig, saveConfig, notifyBiddersStart } from "./api"; // 👈 añade notifyBiddersStart
+
 import "./App.css";
 
 export default function App() {
@@ -67,16 +68,34 @@ export default function App() {
   };
 
   const onSave = async () => {
-    setSaving(true);
+  setSaving(true);
+  try {
+    // 1) Guardar configuración en el MANAGER (8080)
+    await saveConfig({ order, items });
+
+    // 2) Avisar al servicio de POSTORES (8081) para que arranque la secuencia
     try {
-      await saveConfig({ order, items });
-      setMsg({ text: "Configuración guardada", ok: true });
-    } catch (e) {
-      setMsg({ text: e.message || "Error al guardar", ok: false });
-    } finally {
-      setSaving(false);
+      await notifyBiddersStart();
+      setMsg({
+        text: "Configuración guardada y subastas inicializadas en el servicio de postores.",
+        ok: true
+      });
+    } catch (e2) {
+      // La config de manager sí se guardó, pero no pudimos hablar con bidders
+      setMsg({
+        text:
+          "Configuración guardada, pero NO se pudo inicializar el servicio de postores: " +
+          (e2.message || ""),
+        ok: false
+      });
     }
-  };
+  } catch (e) {
+    setMsg({ text: e.message || "Error al guardar", ok: false });
+  } finally {
+    setSaving(false);
+  }
+};
+
 
   const getMeta = id => auctions.find(x => x.id === id);
 

@@ -1,106 +1,227 @@
+// src/server/services/auction.service.js
 import fetch from "node-fetch";
-import { state } from "../models/state.js";
 
 const MANAGER_URL = process.env.MANAGER_URL || "http://localhost:8080";
 
-function now() { return Date.now(); }
-function newEndTs(seconds) { return now() + seconds * 1000; }
+// Estado interno en memoria
+const state = {
+  hasInit: false,
+  order: [],            // [ "ml", "dc", ... ]
+  catalogById: {},      // id -> { id, title, artist, year, basePrice, imageUrl }
+  configById: {},       // id -> { startingPrice, minIncrement, durationSeconds }
+  timingsById: {},      // id -> { startTs, endTs }
+  currentPrices: {},    // id -> number
+  registrations: {},    // id -> [ "Joel", "Ana", ... ]
+  bidsById: {},         // id -> [ { bidder, amount, ts } ]
+};
+
+function nowMs() {
+  return Date.now();
+}
 
 export const AuctionService = {
-  async loadFromManager() {
-    // 1) Traer catálogo
-    const catRes = await fetch(`${MANAGER_URL}/api/subastas`);
-    if (!catRes.ok) throw new Error("No pude leer /api/subastas del manager");
-    const catalogArr = await catRes.json();
-    state.catalog = {};
-    catalogArr.forEach(a => { state.catalog[a.id] = a; });
+  // ---------- Inicializar leyendo del manager (Deber 3 / 4 / Final) ----------
 
-    // 2) Traer config
-    const cfgRes = await fetch(`${MANAGER_URL}/api/config`);
-    if (!cfgRes.ok) throw new Error("No pude leer /api/config del manager");
-    const cfg = await cfgRes.json();
-    if (!cfg || !Array.isArray(cfg.order) || !cfg.items) {
-      throw new Error("Config vacía o inválida en manager");
+  async initFromManager() {
+    // 1) Catálogo desde manager
+    const catRes = await fetch(`${MANAGER_URL}/api/subastas`);
+    if (!catRes.ok) throw new Error("No se pudo leer /api/subastas del manejador");
+    const catalogArr = await catRes.json();
+
+    const catalogById = {};
+    for (const a of catalogArr) {
+      if (!a.id) continue;
+      catalogById[a.id] = a;
     }
-    state.order = cfg.order;
-    state.items = cfg.items;
-    // 3) Reiniciar subasta al primer ítem
-    state.idx = 0;
-    const currentId = state.order[state.idx];
-    const it = state.items[currentId];
-    state.currentPrice = Math.max(it.startingPrice, state.catalog[currentId].basePrice);
-    state.endTs = newEndTs(it.durationSeconds);
-    state.bids = [];
+
+    // 2) Configuración desde manager
+    const cfgRes = await fetch(`${MANAGER_URL}/api/config`);
+    if (!cfgRes.ok) throw new Error("No se pudo leer /api/config del manejador");
+    const cfg = await cfgRes.json();
+
+    if (!cfg || !Array.isArray(cfg.order) || cfg.order.length === 0 || !cfg.items) {
+      throw new Error("Configuración de subastas inválida en el manejador");
+    }
+
+    // 3) Construir estado interno
+    state.order = cfg.order.slice();
+    state.catalogById = catalogById;
+    state.configById = {};
+    state.timingsById = {};
+    state.currentPrices = {};
+    state.registrations = {};
+    state.bidsById = {};
+
+    const t0 = nowMs();
+    let offsetMs = 0;
+
+    for (const id of state.order) {
+      const meta = catalogById[id];
+      const itemCfg = cfg.items[id];
+
+      if (!meta) throw new Error(`Catálogo no contiene id ${id}`);
+      if (!itemCfg) throw new Error(`Config no contiene item para id ${id}`);
+
+      const startingPrice = itemCfg.startingPrice ?? meta.basePrice;
+      const minIncrement = itemCfg.minIncrement ?? Math.max(50, Math.round(meta.basePrice * 0.05));
+      const durationSeconds = itemCfg.durationSeconds ?? 60;
+
+      const startTs = t0 + offsetMs;
+      const endTs = startTs + durationSeconds * 1000;
+
+      state.configById[id] = { startingPrice, minIncrement, durationSeconds };
+      state.timingsById[id] = { startTs, endTs };
+      state.currentPrices[id] = Math.max(startingPrice, meta.basePrice);
+      state.registrations[id] = [];
+      state.bidsById[id] = [];
+
+      offsetMs += durationSeconds * 1000;
+    }
+
+    state.hasInit = true;
+    console.log("✅ Subastas inicializadas desde el manejador");
   },
 
-  getPublicState() {
-    if (!state.order.length) return { ready: false };
-    const currentId = state.order[state.idx];
-    const catalog = state.catalog[currentId] || {};
-    const cfg = state.items[currentId] || {};
-    const remaining = Math.max(0, Math.floor((state.endTs - now()) / 1000));
+  // alias por compatibilidad con rutas antiguas
+  async loadFromManager() {
+    return this.initFromManager();
+  },
+
+  // ---------- Helpers internos ----------
+
+  _computeStatus(id, now) {
+    const t = state.timingsById[id];
+    if (!t) return "pending";
+    if (now < t.startTs) return "pending";
+    if (now >= t.endTs) return "finished";
+    return "active";
+  },
+
+  _computePublicAuction(id, index, now) {
+    const meta = state.catalogById[id];
+    const cfg = state.configById[id];
+    const t = state.timingsById[id];
+    const regs = state.registrations[id] || [];
+    const bids = state.bidsById[id] || [];
+    const currentPrice = state.currentPrices[id];
+
+    const secondsToStart = Math.max(0, Math.floor((t.startTs - now) / 1000));
+    const secondsToEnd = Math.max(0, Math.floor((t.endTs - now) / 1000));
+
+    const status = this._computeStatus(id, now);
+
+    // ganador = puja más alta si ya terminó
+    let winner = null;
+    if (status === "finished" && bids.length > 0) {
+      let best = bids[0];
+      for (const b of bids) {
+        if (b.amount > best.amount) best = b;
+      }
+      winner = { bidder: best.bidder, amount: best.amount };
+    }
+
+    const lastBids = bids.slice(-10); // últimas 10
+
     return {
-      ready: true,
-      current: {
-        id: currentId,
-        title: catalog.title,
-        artist: catalog.artist,
-        year: catalog.year,
-        imageUrl: catalog.imageUrl,
-        basePrice: catalog.basePrice,
-        minIncrement: cfg.minIncrement,
-        durationSeconds: cfg.durationSeconds,
-        startingPrice: cfg.startingPrice,
-        currentPrice: state.currentPrice,
-        remaining
-      },
-      index: state.idx,
-      total: state.order.length,
-      bids: state.bids.slice(-10) // últimas 10
+      id,
+      index,
+      title: meta.title,
+      artist: meta.artist,
+      year: meta.year,
+      imageUrl: meta.imageUrl,
+      basePrice: meta.basePrice,
+      startingPrice: cfg.startingPrice,
+      minIncrement: cfg.minIncrement,
+      durationSeconds: cfg.durationSeconds,
+      status,                // "pending" | "active" | "finished"
+      secondsToStart,        // para Deber 4 (antes de iniciar)
+      secondsToEnd,          // para Proyecto Final (cuando está activa)
+      currentPrice,
+      registrations: regs,
+      bids: lastBids,
+      winner,
     };
   },
 
-  tickAndMaybeAdvance() {
-    if (!state.order.length) return;
-    if (now() >= state.endTs) {
-      // avanzar a la siguiente obra
-      if (state.idx + 1 < state.order.length) {
-        state.idx += 1;
-        const id = state.order[state.idx];
-        const it = state.items[id];
-        state.currentPrice = Math.max(it.startingPrice, state.catalog[id].basePrice);
-        state.endTs = newEndTs(it.durationSeconds);
-        state.bids = [];
-      } else {
-        // fin de todas las subastas: congelamos el tiempo
-        state.endTs = now();
-      }
+  // ---------- Estado público para el cliente (se emite por WS y/o REST) ----------
+
+  getPublicState() {
+    if (!state.hasInit) {
+      return { ready: false };
+    }
+    const now = nowMs();
+
+    const auctions = state.order.map((id, idx) =>
+      this._computePublicAuction(id, idx, now)
+    );
+
+    return {
+      ready: true,
+      now,
+      auctions,
+    };
+  },
+
+  // alias si tenías algo como getState()
+  getState() {
+    return this.getPublicState();
+  },
+
+  // ---------- Registro de postores (Deber 4) ----------
+
+  registerBidder(auctionId, rawBidder) {
+    if (!state.hasInit) throw new Error("Subastas no inicializadas");
+    if (!state.order.includes(auctionId)) throw new Error("Subasta inexistente");
+
+    const bidder = (rawBidder || "").trim();
+    if (bidder.length < 2) throw new Error("Nombre de postor demasiado corto");
+
+    const regs = state.registrations[auctionId] || (state.registrations[auctionId] = []);
+    if (!regs.includes(bidder)) {
+      regs.push(bidder);
     }
   },
 
-  placeBid({ bidder, amount }) {
-    if (!state.order.length) throw new Error("La subasta no está inicializada");
-    const currentId = state.order[state.idx];
-    const cfg = state.items[currentId];
-    if (now() >= state.endTs) throw new Error("La subasta actual ya terminó");
+  // ---------- Hacer una puja (Proyecto Final) ----------
 
-    const minValid = state.currentPrice + cfg.minIncrement;
-    if (typeof amount !== "number" || amount < minValid) {
+  placeBid({ auctionId, bidder: rawBidder, amount }) {
+    if (!state.hasInit) throw new Error("Subastas no inicializadas");
+    if (!state.order.includes(auctionId)) throw new Error("Subasta inexistente");
+
+    const bidder = (rawBidder || "").trim();
+    if (!bidder) throw new Error("Nombre de postor requerido");
+
+    const regs = state.registrations[auctionId] || [];
+    if (!regs.includes(bidder)) {
+      throw new Error("El postor no está registrado en esta subasta");
+    }
+
+    const meta = state.catalogById[auctionId];
+    const cfg = state.configById[auctionId];
+    const t = state.timingsById[auctionId];
+    const now = nowMs();
+
+    if (now < t.startTs) throw new Error("La subasta aún no comienza");
+    if (now >= t.endTs) throw new Error("La subasta ya terminó");
+
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount)) throw new Error("Monto inválido");
+
+    const minValid = (state.currentPrices[auctionId] || cfg.startingPrice || meta.basePrice) + cfg.minIncrement;
+    if (numericAmount < minValid) {
       throw new Error(`La puja mínima es ${minValid}`);
     }
-    if (!bidder || typeof bidder !== "string" || bidder.trim().length < 2) {
-      throw new Error("Nombre de postor inválido");
-    }
 
-    state.currentPrice = amount;
-    state.bids.push({ id: currentId, bidder: bidder.trim(), amount, ts: now() });
-    // bonus: extender 5s si faltan <3s (anti-sniping)
-    const remaining = state.endTs - now();
-    if (remaining < 3000) state.endTs += 5000;
+    const bid = { bidder, amount: numericAmount, ts: now };
+    const bids = state.bidsById[auctionId] || (state.bidsById[auctionId] = []);
+    bids.push(bid);
+    state.currentPrices[auctionId] = numericAmount;
+  },
+
+  // ---------- Tick (si necesitaras lógica extra por segundo) ----------
+
+  tick() {
+    // Por ahora no necesitamos cambiar nada en cada tick:
+    // los estados pending/active/finished se derivan de los timestamps.
   }
 };
-
-// reloj de 1s
-setInterval(() => {
-  try { AuctionService.tickAndMaybeAdvance(); } catch {}
-}, 1000);

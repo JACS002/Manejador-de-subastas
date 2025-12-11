@@ -4,4 +4,6 @@ const router = express.Router();
 
 router.get("/", AuctionsController.list);
 
+
+
 export default router;

@@ -1,3 +1,4 @@
+// src/server/app.js
 import express from "express";
 import cors from "cors";
 import path from "path";
@@ -12,12 +13,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// API
+// API para postores
 app.use("/api", auctionRoutes);
 
-// servir frontend (build Vite)
+// Servir frontend build (si corres en modo prod)
 const clientDist = path.join(__dirname, "..", "..", "dist", "client");
 const indexHtml = path.join(clientDist, "index.html");
+
 if (fs.existsSync(indexHtml)) {
   app.use(express.static(clientDist));
   app.get(/.*/, (_req, res) => res.sendFile(indexHtml));
