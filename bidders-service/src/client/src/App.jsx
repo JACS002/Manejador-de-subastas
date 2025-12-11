@@ -288,6 +288,7 @@ function AuctionView({ state, globalMsg, setGlobalMsg }) {
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 min={minNext}
+                step={auction.minIncrement}
               />
               <button className="btn btn-primary" onClick={handleBid} disabled={!isActive}>
                 Ofertar
